@@ -5,12 +5,12 @@ import numpy as np
 import os
 import xml.etree.ElementTree as ET
 
+import random
 import torch
 import torch.nn
 from PIL import Image
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
-
 
 class VOCDataset(Dataset):
     CLASS_NAMES = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car',
@@ -24,7 +24,7 @@ class VOCDataset(Dataset):
         super().__init__()
         self.split = split
         self.data_dir = data_dir
-        self.size = size
+        self.size = (size, size)
         self.img_dir = os.path.join(data_dir, 'JPEGImages')
         self.ann_dir = os.path.join(data_dir, 'Annotations')
 
@@ -69,7 +69,13 @@ class VOCDataset(Dataset):
             weight_vec = torch.ones(20)
 
             # TODO insert your code here
-
+            for obj in tree.findall('object'):
+                class_name = obj.find('name').text
+                class_index = self.get_class_index(class_name)
+                class_vec[class_index] = 1
+                difficult = obj.find('difficult').text
+                if difficult == '1':
+                    weight_vec[class_index] = 0
             label_list.append((class_vec, weight_vec))
 
         return label_list
@@ -81,7 +87,15 @@ class VOCDataset(Dataset):
         # Some commonly used ones are random crops, flipping, rotation
         # You are encouraged to read the docs https://pytorch.org/vision/stable/transforms.html
         # Depending on the augmentation you use, your final image size will change and you will have to write the correct value of `flat_dim` in line 46 in simple_cnn.py
-        pass
+        augumentations = [
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            # transforms.RandomRotation(30),
+            transforms.GaussianBlur(kernel_size=5),
+            transforms.ColorJitter(),
+        ]
+        random_augs = random.choices(augumentations, k=2)
+        return random_augs if self.split == 'train' else []
 
     def __getitem__(self, index):
         """
@@ -108,5 +122,5 @@ class VOCDataset(Dataset):
         image = torch.FloatTensor(img)
         label = torch.FloatTensor(lab_vec)
         wgt = torch.FloatTensor(wgt_vec)
-
+        
         return image, label, wgt

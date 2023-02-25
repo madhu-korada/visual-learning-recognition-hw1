@@ -1,4 +1,6 @@
+data/
 q1_q2_classification/data/
 
 detection/__pycache__/
+detection/utils/__pycache__/
 q1_q2_classification/__pycache__/

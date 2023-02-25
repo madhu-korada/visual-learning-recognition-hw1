@@ -47,7 +47,12 @@ def train(args, model, optimizer, scheduler=None, model_name='model'):
             # You are NOT allowed to use any pytorch built-in functions
             # Remember to take care of underflows / overflows when writing your function
             loss = 0
-
+            output = torch.sigmoid(output)
+            # output = torch.clip(output, min=1e-10, max=1-1e-10)
+            
+            loss = torch.sum(-wgt*target*torch.log(output) - wgt*(1-target)*torch.log(1-output))
+            loss = loss / len(output)
+            
             loss.backward()
             
             if cnt % args.log_every == 0:
