@@ -3,4 +3,9 @@ q1_q2_classification/data/
 
 detection/__pycache__/
 detection/utils/__pycache__/
+detection/detection_logs/
+
 q1_q2_classification/__pycache__/
+q1_q2_classification/runs/
+
+164329545/
