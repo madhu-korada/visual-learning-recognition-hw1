@@ -146,10 +146,6 @@ def fcos_get_deltas_from_locations(
     deltas[:, 2] = (gt_boxes[:, 2] - locations[:, 0]) / stride
     deltas[:, 3] = (gt_boxes[:, 3] - locations[:, 1]) / stride
     deltas[gt_boxes[:, :4] == -1] = -1
-    # deltas[gt_boxes[:, 0] == -1] = -1
-    # deltas[gt_boxes[:, 1] == -1] = -1
-    # deltas[gt_boxes[:, 2] == -1] = -1
-    # deltas[gt_boxes[:, 3] == -1] = -1
     ##########################################################################
     #                             END OF YOUR CODE                           #
     ##########################################################################
@@ -191,6 +187,9 @@ def fcos_apply_deltas_to_locations(
     # box. Make sure to clip them to zero.                                   #
     ##########################################################################
     output_boxes = torch.zeros_like(deltas)
+    # Clip the deltas to zero
+    deltas = torch.clamp(deltas, min=0)
+    
     if torch.equal(deltas[:, 0], torch.tensor([-1])):
         output_boxes[:, 0] = locations[:, 0]
         output_boxes[:, 1] = locations[:, 1]
@@ -202,8 +201,6 @@ def fcos_apply_deltas_to_locations(
         output_boxes[:, 2] = locations[:, 0] + deltas[:, 2] * stride
         output_boxes[:, 3] = locations[:, 1] + deltas[:, 3] * stride
     
-    # Clip the output boxes to zero
-    output_boxes = torch.clamp(output_boxes, min=0)
     ##########################################################################
     #                             END OF YOUR CODE                           #
     ##########################################################################
@@ -278,26 +275,21 @@ def get_fpn_location_coords(
         level_name: None for level_name, _ in shape_per_fpn_level.items()
     }
 
-    H, W = feat_shape[2:]
-    s = level_stride
-    
+    # print("\nstrides_per_fpn_level", strides_per_fpn_level)
     for level_name, feat_shape in shape_per_fpn_level.items():
         level_stride = strides_per_fpn_level[level_name]
         ######################################################################
         # TODO: Implement logic to get location co-ordinates below.          #
         ######################################################################
-        xs = torch.arange(0, W, dtype=dtype, device=device) * s + s/2
-        ys = torch.arange(0, H, dtype=dtype, device=device) * s + s/2
-        location_coords[level_name] = torch.stack(torch.meshgrid(xs, ys), dim=-1).reshape(-1, 2)
-        location_coords[level_name] = torch.zeros(H * W, 2)
-        location_coords[level_name][:, 0] = xs
-        location_coords[level_name][:, 1] = ys
-        
+        # print("feat shape", feat_shape, "\n")
+        H, W = feat_shape[2:]
         # H * W, 2 ## (s/2 + xs, s/2 + ys)
-        # location_coords[level_name] = torch.zeros((feat_shape[2]*feat_shape[3], 2), dtype=dtype, device=device)
-        # location_coords[level_name] = torch.tensor(([i*level_stride + level_stride/2, j*level_stride + level_stride/2] 
-        #                                            for i in range(feat_shape[2]) for j in range(feat_shape[3])), device=device)
-        
+        # print("H, W", "stride", H, W, level_stride,"\n")
+        xs = torch.arange(0, W, dtype=dtype, device=device) * level_stride + level_stride/2
+        ys = torch.arange(0, H, dtype=dtype, device=device) * level_stride + level_stride/2
+        # print("xs", xs, "\n", "ys", ys, "\n")
+        location_coords[level_name] = torch.stack(torch.meshgrid(xs, ys), dim=-1).reshape(-1, 2).to(device)
+
         ######################################################################
         #                             END OF YOUR CODE                       #
         ######################################################################

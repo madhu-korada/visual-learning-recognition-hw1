@@ -37,7 +37,9 @@ class TestDetectorBackboneWithFPN(unittest.TestCase):
     def test_backbone(self):
         if self.dummy_fpn_feats['p3'] is None:
             self.skipTest("Detector backbone not implemented.")
-
+        print("FPN p3 shape: ", self.dummy_fpn_feats["p3"].shape)
+        print("FPN p4 shape: ", self.dummy_fpn_feats["p4"].shape)
+        print("FPN p5 shape: ", self.dummy_fpn_feats["p5"].shape)
         self.assertEqual(self.dummy_fpn_feats["p3"].shape, torch.Size([2, self.out_channels, 28, 28]))
         self.assertEqual(self.dummy_fpn_feats["p4"].shape, torch.Size([2, self.out_channels, 14, 14]))
         self.assertEqual(self.dummy_fpn_feats["p5"].shape, torch.Size([2, self.out_channels, 7, 7]))
@@ -51,7 +53,7 @@ class TestDetectorBackboneWithFPN(unittest.TestCase):
         class_logits, boxreg_deltas, centerness_logits = self.pred_net(self.dummy_fpn_feats)
         if len(class_logits) == 0:
             self.skipTest("Detector backbone not implemented.")
-
+        print("\n\nClass logits p3 shape: ", class_logits['p3'].shape, "\nboxreg_deltas p3 shape: ", boxreg_deltas['p3'].shape, "\ncenterness_logits['p3'].shape p3 shape: ", centerness_logits['p3'].shape)
         self.assertEqual(class_logits["p3"].shape, torch.Size([2, 784, self.num_classes]))
         self.assertEqual(boxreg_deltas["p3"].shape, torch.Size([2, 784, 4]))
         self.assertEqual(centerness_logits["p3"].shape, torch.Size([2, 784, 1]))
@@ -98,6 +100,7 @@ class TestDetectorBackboneWithFPN(unittest.TestCase):
         if _deltas is None:
             self.skipTest("fcos_get_deltas_from_test is not implemented.")
         output_boxes = fcos_apply_deltas_to_locations(_deltas, input_locations, stride=8)
+        # print("Inside test_gt_targets_for_box_regression input_boxes: ", input_boxes, "\noutput_box: ", output_boxes)
         box_error = rel_error(input_boxes[:, :4], output_boxes)
         self.assertEqual(box_error, 0.0)
 
@@ -109,7 +112,7 @@ class TestDetectorBackboneWithFPN(unittest.TestCase):
         if _deltas is None:
             self.skipTest("FCOS get deltas_from test is not implemented.")
         output_box = fcos_apply_deltas_to_locations(_deltas, input_location, stride=8)
-        
+        # print("Inside test_gt_deltas_invalid_box deltas: ", _deltas, "\noutput_box: ", output_box)
         self.assertTrue(torch.equal(_deltas, torch.tensor([[-1., -1., -1., -1.]])))
         self.assertTrue(torch.equal(output_box, torch.tensor([[100., 200., 100., 200.]])))
 
@@ -127,6 +130,7 @@ class TestDetectorBackboneWithFPN(unittest.TestCase):
         if _deltas is None:
             self.skipTest("fcos_get_deltas_from_test is not implemented.")
         centerness = fcos_make_centerness_targets(_deltas)
+        print("Inside test_make_centerness_targets centerness: ", centerness, "\nexpected_centerness: ", expected_centerness)
         self.assertAlmostEqual(rel_error(centerness, expected_centerness), 0.0, places=5)
 
     def test_sigmoid_focal_loss(self):
@@ -169,6 +173,7 @@ class TestDetectorBackboneWithFPN(unittest.TestCase):
         dummy_gt_deltas = fcos_get_deltas_from_locations(
             dummy_locations, dummy_gt_boxes, stride=32
         )
+        # print("dummy_gt_deltas: ", dummy_gt_deltas)
         if dummy_gt_deltas is None:
             self.skipTest("fcos_get_deltas_from_test is not implemented.")
         else:
