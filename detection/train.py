@@ -19,6 +19,7 @@ import argparse
 from dataclasses import dataclass
 import os
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
 import torchvision.transforms as transforms
@@ -35,7 +36,7 @@ if torch.cuda.is_available():
 else:
     print("Please check your GPU (if running on AWS). Using CPU instead.")
     DEVICE = torch.device("cpu")
-
+    
 NUM_CLASSES = 20
 BATCH_SIZE = 16
 IMAGE_SHAPE = (224, 224)
@@ -118,7 +119,7 @@ def visualize_gt(train_dataset, val_dataset):
         # Remove padded boxes from visualization.
         is_valid = gt_boxes[:, 4] >= 0
         img = detection_visualizer(image, val_dataset.idx_to_class, gt_boxes[is_valid])
-        gt_images.append(torch.from_numpy(img))
+        gt_images.append(torch.from_numpy(np.array(img)))
     
     img_grid = make_grid(gt_images, nrow=8)
     writer.add_image("train/gt_images", img_grid, global_step=idx)
@@ -126,7 +127,7 @@ def visualize_gt(train_dataset, val_dataset):
 
 def main(args):
     print("Loading data...")
-    
+    # args.overfit = False
     if args.overfit:
         print("Loading a small subset for overfitting.")
     train_loader, val_loader, train_dataset, val_dataset = create_dataset_and_dataloaders(args.overfit)

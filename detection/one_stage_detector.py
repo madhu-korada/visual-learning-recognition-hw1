@@ -351,7 +351,7 @@ class FCOS(nn.Module):
         fpn_feats_shapes = {
             level_name: feat.shape for level_name, feat in backbone_feats.items()
         }
-        locations_per_fpn_level = get_fpn_location_coords(fpn_feats_shapes, self.backbone.fpn_strides)
+        locations_per_fpn_level = get_fpn_location_coords(fpn_feats_shapes, self.backbone.fpn_strides, device=images.device)
         # print(locations_per_fpn_level)
         ######################################################################
         #                           END OF YOUR CODE                         #∏
@@ -377,18 +377,17 @@ class FCOS(nn.Module):
         # List of dictionaries with keys {"p3", "p4", "p5"} giving matched
         # boxes for locations per FPN level, per image. Fill this list:
         matched_gt_boxes = []
-        # matched_gt_boxes = [fcos_match_locations_to_gt(locations_per_fpn_level, self.backbone.fpn_strides, gt_boxes[i, :, :]) for i in range(gt_boxes.shape[0])]
+        matched_gt_deltas = []
         # Calculate GT deltas for these matched boxes. Similar structure
         # as `matched_gt_boxes` above. Fill this list:
-        matched_gt_deltas = []
-        matched_gt_centerness = []
-        for i in range(gt_boxes.shape[0]):
-            matched_gt_boxes.append(fcos_match_locations_to_gt(locations_per_fpn_level, self.backbone.fpn_strides, gt_boxes[i, :, :]))
+        # matched_gt_boxes = [fcos_match_locations_to_gt(locations_per_fpn_level, self.backbone.fpn_strides, gt_boxes[i, :, :]) for i in range(gt_boxes.shape[0])]
+        for gt_box in gt_boxes:
+            matched_gt_boxes.append(fcos_match_locations_to_gt(locations_per_fpn_level, self.backbone.fpn_strides, gt_box))
             
         # print(len(matched_gt_boxes), matched_gt_boxes[0].keys())
         
         for matched_gt_box in matched_gt_boxes:
-            levels = matched_gt_boxes[i].keys()
+            levels = matched_gt_boxes[0].keys()
             levels = dict(zip(levels, [[], [], []]))
             for level, boxes in matched_gt_box.items():
                 levels[level] = fcos_get_deltas_from_locations(locations_per_fpn_level[level], boxes, self.backbone.fpn_strides[level])
@@ -525,35 +524,39 @@ class FCOS(nn.Module):
             #      and width of input image.
             ##################################################################
             # Feel free to delete this line: (but keep variable names same)
-            level_pred_boxes, level_pred_classes, level_pred_scores = (
-                None,  # Need tensors of shape: (N, 4) (N, ) (N, )
-                torch.sqrt(torch.sigmoid(level_cls_logits)*torch.sigmoid(level_ctr_logits)),
-                torch.argmax(torch.sqrt(torch.sigmoid(level_cls_logits)*torch.sigmoid(level_ctr_logits)), dim=1),
-            )
+            
+            # Compute geometric mean of class logits and centerness:
+            level_pred_scores = torch.sqrt(torch.sigmoid(level_cls_logits)*torch.sigmoid(level_ctr_logits))
+            
+            level_pred_classes = torch.argmax(level_pred_scores, dim=1)
+            level_pred_classes = level_pred_classes[level_pred_scores > test_score_thresh]
 
+            # get all boxes and filter out boxes with low confidence
             level_pred_boxes = fcos_apply_deltas_to_locations(level_deltas, level_locations, self.backbone.fpn_strides[level_name])
             level_pred_boxes = level_pred_boxes[level_pred_scores > test_score_thresh]
             
+            # clip boxes
+            im_height, im_width = images.shape[2:]
+            level_pred_boxes[:, 0] = torch.clamp(level_pred_boxes[:, 0], min=0, max=im_width)
+            level_pred_boxes[:, 1] = torch.clamp(level_pred_boxes[:, 1], min=0, max=im_height)
+            level_pred_boxes[:, 2] = torch.clamp(level_pred_boxes[:, 2], min=0, max=im_width)
+            level_pred_boxes[:, 3] = torch.clamp(level_pred_boxes[:, 3], min=0, max=im_height)
             
-            # Compute geometric mean of class logits and centerness:
-            level_pred_scores = torch.sqrt(
-                level_cls_logits.sigmoid_() * level_ctr_logits.sigmoid_()
-            )
             # Step 1:
             # Replace "pass" statement with your code
-            pass
+            # pass
             
             # Step 2:
             # Replace "pass" statement with your code
-            pass
+            # pass
 
             # Step 3:
             # Replace "pass" statement with your code
-            pass
+            # pass
 
             # Step 4: Use `images` to get (height, width) for clipping.
             # Replace "pass" statement with your code
-            pass
+            # pass
 
             ##################################################################
             #                          END OF YOUR CODE                      #
