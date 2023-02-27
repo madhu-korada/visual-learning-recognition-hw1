@@ -525,43 +525,43 @@ class FCOS(nn.Module):
             ##################################################################
             # Feel free to delete this line: (but keep variable names same)
             
-            # Compute geometric mean of class logits and centerness:
-            level_pred_scores = torch.sqrt(torch.sigmoid(level_cls_logits)*torch.sigmoid(level_ctr_logits))
-            
-            level_pred_classes = torch.argmax(level_pred_scores, dim=1)
-            level_pred_classes = level_pred_classes[level_pred_scores > test_score_thresh]
-
-            # get all boxes and filter out boxes with low confidence
-            level_pred_boxes = fcos_apply_deltas_to_locations(level_deltas, level_locations, self.backbone.fpn_strides[level_name])
-            level_pred_boxes = level_pred_boxes[level_pred_scores > test_score_thresh]
-            
-            # clip boxes
-            im_height, im_width = images.shape[2:]
-            level_pred_boxes[:, 0] = torch.clamp(level_pred_boxes[:, 0], min=0, max=im_width)
-            level_pred_boxes[:, 1] = torch.clamp(level_pred_boxes[:, 1], min=0, max=im_height)
-            level_pred_boxes[:, 2] = torch.clamp(level_pred_boxes[:, 2], min=0, max=im_width)
-            level_pred_boxes[:, 3] = torch.clamp(level_pred_boxes[:, 3], min=0, max=im_height)
-            
             # Step 1:
-            # Replace "pass" statement with your code
-            # pass
+            # Compute geometric mean of class logits and centerness:
+            level_pred_scores = torch.sqrt(torch.sigmoid(level_cls_logits) * torch.sigmoid(level_ctr_logits))
             
+            # Get the most confidently predicted class and its score for
+            # every box. Use level_pred_scores: (N, num_classes) => (N, )
+            level_pred_classes = torch.argmax(level_pred_scores, dim=1)
+            # print("argmax pred classes: ", level_pred_classes[:5])
+            level_pred_scores = torch.max(level_pred_scores, dim=1)[0]
+            # print("max pred scores: ", level_pred_scores[:5])
+                
             # Step 2:
-            # Replace "pass" statement with your code
-            # pass
+            # Only retain prediction that have a confidence score higher
+            # than provided threshold in arguments.
+            keep = level_pred_scores > 0.3#test_score_thresh
+            # print("keep: ", keep)
+            level_pred_scores = level_pred_scores[keep]
+            level_pred_classes = level_pred_classes[keep]
+            level_locations = level_locations[keep]
+            level_deltas = level_deltas[keep]
 
             # Step 3:
-            # Replace "pass" statement with your code
-            # pass
-
-            # Step 4: Use `images` to get (height, width) for clipping.
-            # Replace "pass" statement with your code
-            # pass
-
+            # Obtain predicted boxes using predicted deltas and locations
+            stride = self.backbone.fpn_strides[level_name]
+            height, width = images.shape[-2:]
+            level_pred_boxes = fcos_apply_deltas_to_locations(level_deltas, level_locations, self.backbone.fpn_strides[level_name])
+            # level_pred_boxes = level_pred_boxes[keep]
+            
+            level_pred_boxes[:, 0] = torch.clamp(level_pred_boxes[:, 0], min=0, max=width)
+            level_pred_boxes[:, 1] = torch.clamp(level_pred_boxes[:, 1], min=0, max=height)
+            level_pred_boxes[:, 2] = torch.clamp(level_pred_boxes[:, 2], min=0, max=width)
+            level_pred_boxes[:, 3] = torch.clamp(level_pred_boxes[:, 3], min=0, max=height)
+            
             ##################################################################
             #                          END OF YOUR CODE                      #
             ##################################################################
-
+            #print("level shape: ", level_pred_boxes.shape, level_pred_classes.shape, level_pred_scores.shape)
             pred_boxes_all_levels.append(level_pred_boxes)
             pred_classes_all_levels.append(level_pred_classes)
             pred_scores_all_levels.append(level_pred_scores)
@@ -571,7 +571,7 @@ class FCOS(nn.Module):
         pred_boxes_all_levels = torch.cat(pred_boxes_all_levels)
         pred_classes_all_levels = torch.cat(pred_classes_all_levels)
         pred_scores_all_levels = torch.cat(pred_scores_all_levels)
-
+    
         keep = class_spec_nms(
             pred_boxes_all_levels,
             pred_scores_all_levels,

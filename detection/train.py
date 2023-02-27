@@ -36,7 +36,8 @@ if torch.cuda.is_available():
 else:
     print("Please check your GPU (if running on AWS). Using CPU instead.")
     DEVICE = torch.device("cpu")
-    
+
+DEVICE = torch.device("cpu")
 NUM_CLASSES = 20
 BATCH_SIZE = 16
 IMAGE_SHAPE = (224, 224)
@@ -127,7 +128,7 @@ def visualize_gt(train_dataset, val_dataset):
 
 def main(args):
     print("Loading data...")
-    # args.overfit = False
+    args.overfit = False
     if args.overfit:
         print("Loading a small subset for overfitting.")
     train_loader, val_loader, train_dataset, val_dataset = create_dataset_and_dataloaders(args.overfit)
@@ -147,22 +148,24 @@ def main(args):
         )
     detector = FCOS(
         num_classes=NUM_CLASSES,
-        fpn_channels=64,
-        stem_channels=[64, 64],
+        fpn_channels=128,
+        stem_channels=[128, 128],
     )
+    # args.visualize_gt = True
 
     if args.visualize_gt:
         print("Visualizing GT...")
         visualize_gt(train_dataset, val_dataset)        
         return
     
-    print("Training model...")
-    if not args.visualize_gt:
-        train_model(detector, train_loader, hyperparams, overfit=args.overfit)
+    # print("Training model...")
+    # if not args.visualize_gt:
+    #     train_model(detector, train_loader, hyperparams, overfit=args.overfit)
     print("Training complete! Saving loss curve to loss.png...")
     if not args.inference:
         return
     print("Running inference...")
+    args.test_inference = False
     if args.test_inference:
         small_dataset = torch.utils.data.Subset(
             val_dataset,
@@ -177,6 +180,7 @@ def main(args):
         # Re-initialize so this cell is independent from prior cells.
         detector = FCOS(
             num_classes=NUM_CLASSES, fpn_channels=128, stem_channels=[128, 128]
+            # num_classes=NUM_CLASSES, fpn_channels=64, stem_channels=[64, 64]
         )
         detector.to(device=DEVICE)
         detector.load_state_dict(torch.load(weights_path, map_location="cpu"))
@@ -191,6 +195,14 @@ def main(args):
             dtype=torch.float32,
         )
     else:
+        weights_path = os.path.join(".", "fcos_detector.pt")
+
+        detector = FCOS(
+            num_classes=NUM_CLASSES, fpn_channels=128, stem_channels=[128, 128]
+            # num_classes=NUM_CLASSES, fpn_channels=64, stem_channels=[64, 64]
+        )
+        detector.to(device=DEVICE)
+        detector.load_state_dict(torch.load(weights_path, map_location="cpu"))
         print("Running inference and computing mAP...")
         assert os.path.exists("mAP")
         inference_with_detector(
@@ -198,7 +210,7 @@ def main(args):
             val_loader,
             val_dataset.idx_to_class,
             score_thresh=0.4,
-            nms_thresh=0.6,
+            nms_thresh=0.5,
             device=DEVICE,
             dtype=torch.float32,
             output_dir="mAP/input",
