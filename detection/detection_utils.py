@@ -237,7 +237,7 @@ def fcos_make_centerness_targets(deltas: torch.Tensor):
     left_right = deltas[:, [0, 2]]
     top_bottom = deltas[:, [1, 3]]
     centerness = torch.sqrt((left_right.min(dim=-1)[0] / left_right.max(dim=-1)[0]) * \
-                 (top_bottom.min(dim=-1)[0] / top_bottom.max(dim=-1)[0]))
+                            (top_bottom.min(dim=-1)[0] / top_bottom.max(dim=-1)[0]))
     centerness[deltas[:, 0] == -1] = -1
     ##########################################################################
     #                             END OF YOUR CODE                           #
